@@ -20,9 +20,16 @@ class RecentShipment {
   final String number;
   final int points;
   final String date;
-  final String status;
+  final String status; // Selesai | Berjalan | Gagal
+  final String? company;
 
-  const RecentShipment(this.number, this.points, this.date, this.status);
+  const RecentShipment(
+    this.number,
+    this.points,
+    this.date,
+    this.status, {
+    this.company,
+  });
 }
 
 /// Satu bukti validasi (foto + GPS). Nanti dikirim ke Laravel.
@@ -50,6 +57,9 @@ class ValidationRecord {
 
 class MockData {
   static const driverName = 'Budi';
+  static const driverFullName = 'Budi Santoso';
+  static const driverRole = 'Driver';
+  static const driverCompany = 'PT Sumber Makmur';
   static const shipmentNumber = 'TRK-20261004-001';
 
   /// Koordinat dummy. Ganti dengan koordinat nyata saat pengujian di lapangan.
@@ -87,10 +97,63 @@ class MockData {
   ];
 
   static const recent = [
-    RecentShipment('TRK-20260925-003', 2, '25 Sep 2026', 'Selesai'),
-    RecentShipment('TRK-20260924-002', 3, '24 Sep 2026', 'Selesai'),
-    RecentShipment('TRK-20260923-001', 1, '23 Sep 2026', 'Selesai'),
+    RecentShipment(
+      'TRK-20260925-003',
+      2,
+      '25 Sep 2026',
+      'Selesai',
+      company: 'PT DEF Corp',
+    ),
+    RecentShipment(
+      'TRK-20260924-002',
+      3,
+      '24 Sep 2026',
+      'Selesai',
+      company: 'PT ABC Indonesia',
+    ),
+    RecentShipment(
+      'TRK-20260923-001',
+      1,
+      '23 Sep 2026',
+      'Selesai',
+      company: 'PT XYZ Logistic',
+    ),
   ];
+
+  /// Riwayat lengkap (layar Riwayat Pengiriman). Ganti dengan data Laravel.
+  static const history = [
+    RecentShipment(
+      'TRK-20260926-001',
+      3,
+      '26 Sep 2026',
+      'Selesai',
+      company: 'PT ABC Indonesia',
+    ),
+    RecentShipment(
+      'TRK-20260925-003',
+      2,
+      '25 Sep 2026',
+      'Gagal',
+      company: 'PT DEF Corp',
+    ),
+    RecentShipment(
+      'TRK-20260924-008',
+      4,
+      '24 Sep 2026',
+      'Selesai',
+      company: 'PT XYZ Logistic',
+    ),
+    RecentShipment(
+      'TRK-20260923-001',
+      1,
+      '23 Sep 2026',
+      'Selesai',
+      company: 'PT XYZ Logistic',
+    ),
+  ];
+
+  /// Statistik harian untuk grafik Laporan.
+  static const dailyStats = <double>[1, 3, 6, 4, 7, 5, 9, 12, 15, 11, 14, 17];
 }
 
 /// Status alur yang sedang berjalan (hanya untuk tahap UI).

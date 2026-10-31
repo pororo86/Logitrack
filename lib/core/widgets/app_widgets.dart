@@ -27,7 +27,14 @@ class AppCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color ?? Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x143478F6),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: child,
     );
@@ -40,6 +47,7 @@ class PrimaryButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool outlined;
   final bool loading;
+  final IconData? icon;
 
   const PrimaryButton({
     super.key,
@@ -47,6 +55,7 @@ class PrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.outlined = false,
     this.loading = false,
+    this.icon,
   });
 
   @override
@@ -55,6 +64,15 @@ class PrimaryButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
     );
     const textStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w700);
+
+    final content = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
+        Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
+      ],
+    );
 
     return SizedBox(
       width: double.infinity,
@@ -66,9 +84,10 @@ class PrimaryButton extends StatelessWidget {
                 shape: shape,
                 textStyle: textStyle,
                 foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.border),
+                backgroundColor: Colors.white,
+                side: const BorderSide(color: AppColors.primary, width: 1.2),
               ),
-              child: Text(label),
+              child: content,
             )
           : FilledButton(
               onPressed: loading ? null : onPressed,
@@ -86,7 +105,7 @@ class PrimaryButton extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : Text(label),
+                  : content,
             ),
     );
   }
@@ -200,6 +219,30 @@ class StatusChip extends StatelessWidget {
     required this.color,
     required this.background,
   });
+
+  /// Chip otomatis dari teks status: Selesai / Berjalan / Gagal.
+  factory StatusChip.of(String status) {
+    switch (status) {
+      case 'Gagal':
+        return StatusChip(
+          label: status,
+          color: AppColors.danger,
+          background: AppColors.softRed,
+        );
+      case 'Berjalan':
+        return StatusChip(
+          label: status,
+          color: const Color(0xFFC98A12),
+          background: AppColors.softYellow,
+        );
+      default:
+        return StatusChip(
+          label: status,
+          color: AppColors.success,
+          background: AppColors.softGreen,
+        );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -369,19 +412,30 @@ class PhotoBox extends StatelessWidget {
                 if (hasPhoto)
                   Image.file(file!, fit: BoxFit.cover)
                 else
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFEFF3FA), Color(0xFFDDE5F2)],
-                      ),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.photo_camera_outlined,
-                        size: 64,
-                        color: AppColors.muted,
+                  GestureDetector(
+                    onTap: busy ? null : onCapture,
+                    child: CustomPaint(
+                      painter: _DashedBoxPainter(),
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.photo_camera_outlined,
+                              size: 34,
+                              color: AppColors.primary,
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Ambil Foto',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.text,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -561,4 +615,121 @@ class _MapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MapPainter old) => old.showRoute != showRoute;
+}
+
+class _DashedBoxPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(14),
+    );
+    canvas.drawRRect(
+      rrect,
+      Paint()..color = AppColors.softBlue.withValues(alpha: 0.55),
+    );
+    final paint = Paint()
+      ..color = AppColors.primary.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final path = Path()..addRRect(rrect);
+    for (final m in path.computeMetrics()) {
+      double d = 0;
+      while (d < m.length) {
+        canvas.drawPath(m.extractPath(d, d + 5), paint);
+        d += 9;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+/// Kotak ikon lembut (dipakai di kartu & daftar).
+class IconBadge extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color background;
+  final double size;
+
+  const IconBadge(
+    this.icon, {
+    super.key,
+    this.color = AppColors.primary,
+    this.background = AppColors.softBlue,
+    this.size = 38,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, color: color, size: size * 0.52),
+    );
+  }
+}
+
+/// Baris pengiriman (Dashboard & Riwayat).
+class ShipmentTile extends StatelessWidget {
+  final RecentShipment item;
+  final bool detailed; // true = tampilkan perusahaan, tanggal & panah
+  final VoidCallback? onTap;
+
+  const ShipmentTile(this.item, {super.key, this.detailed = false, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AppCard(
+        child: Row(
+          children: [
+            const IconBadge(Icons.local_shipping_outlined),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.number,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (detailed && item.company != null)
+                    Text(
+                      item.company!,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  Text(
+                    detailed
+                        ? '${item.date} • ${item.points} Tujuan'
+                        : '${item.points} Tujuan',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            StatusChip.of(item.status),
+            if (detailed)
+              const Icon(Icons.chevron_right, color: AppColors.text),
+          ],
+        ),
+      ),
+    );
+  }
 }

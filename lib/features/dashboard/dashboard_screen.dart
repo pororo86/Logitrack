@@ -4,6 +4,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/mock_data.dart';
+import '../history/history_screen.dart';
+import '../profile/profile_screen.dart';
+import '../report/report_screen.dart';
 import '../shipment/process_screen.dart';
 import '../shipment/set_shipment_screen.dart';
 
@@ -17,22 +20,15 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _tab = 0;
 
-  static const _tabNames = ['Beranda', 'Pengiriman', 'Notifikasi', 'Profil'];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _tab == 0
-          ? _home()
-          : SafeArea(
-              child: Center(
-                child: Text(
-                  'Halaman ${_tabNames[_tab]}\nakan dibuat di tahap berikutnya',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.muted),
-                ),
-              ),
-            ),
+      body: switch (_tab) {
+        0 => _home(),
+        1 => const HistoryScreen(),
+        2 => const ReportScreen(),
+        _ => const ProfileScreen(),
+      },
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         backgroundColor: Colors.white,
@@ -45,14 +41,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label: 'Beranda',
           ),
           NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2, color: AppColors.primary),
+            icon: Icon(Icons.local_shipping_outlined),
+            selectedIcon: Icon(Icons.local_shipping, color: AppColors.primary),
             label: 'Pengiriman',
           ),
           NavigationDestination(
-            icon: Icon(Icons.notifications_none),
-            selectedIcon: Icon(Icons.notifications, color: AppColors.primary),
-            label: 'Notifikasi',
+            icon: Icon(Icons.assessment_outlined),
+            selectedIcon: Icon(Icons.assessment, color: AppColors.primary),
+            label: 'Laporan',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
@@ -89,7 +85,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Halo, ${MockData.driverName}',
+                      'Halo, ${MockData.driverName} 👋',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -97,7 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     const Text(
-                      'Selamat bertugas hari ini',
+                      'Selamat bertugas hari ini!',
                       style: TextStyle(color: AppColors.muted, fontSize: 12.5),
                     ),
                   ],
@@ -124,6 +120,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const _StatsCard(),
+              const SizedBox(height: 14),
+              PrimaryButton(
+                label: 'Buat Pengiriman',
+                icon: Icons.add,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SetShipmentScreen()),
+                ),
+              ),
+              const SizedBox(height: 14),
               AppCard(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -183,31 +189,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: _QuickAction(
-                      icon: Icons.add,
-                      label: 'Buat Pengiriman',
-                      filled: true,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const SetShipmentScreen(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _QuickAction(
-                      icon: Icons.history,
-                      label: 'Riwayat Pengiriman',
-                      onTap: () => setState(() => _tab = 1),
-                    ),
-                  ),
-                ],
-              ),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -229,59 +210,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               for (final r in MockData.recent)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: AppCard(
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: AppColors.softBlue,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.description_outlined,
-                            color: AppColors.primary,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                r.number,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              Text(
-                                '${r.points} Titik Pengiriman',
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  color: AppColors.muted,
-                                ),
-                              ),
-                              Text(
-                                r.date,
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  color: AppColors.muted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        StatusChip(
-                          label: r.status,
-                          color: AppColors.success,
-                          background: AppColors.softGreen,
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: ShipmentTile(r),
                 ),
               const SizedBox(height: 12),
             ],
@@ -292,55 +221,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class _QuickAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool filled;
-  final VoidCallback onTap;
-
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.filled = false,
-  });
+class _StatsCard extends StatelessWidget {
+  const _StatsCard();
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: filled ? AppColors.primary : Colors.white,
-                border: filled
-                    ? null
-                    : Border.all(color: AppColors.text, width: 1.5),
-              ),
-              child: Icon(
-                icon,
-                color: filled ? Colors.white : AppColors.text,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
+    // Angka dummy -> ganti dari Laravel.
+    return const AppCard(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          _Stat(
+            Icons.local_shipping_outlined,
+            AppColors.primary,
+            AppColors.softBlue,
+            '3',
+            'Pengiriman\nAktif',
+          ),
+          _VDivider(),
+          _Stat(
+            Icons.check_circle,
+            AppColors.success,
+            AppColors.softGreen,
+            '12',
+            'Selesai\nHari Ini',
+          ),
+          _VDivider(),
+          _Stat(
+            Icons.cancel_outlined,
+            AppColors.danger,
+            AppColors.softRed,
+            '2',
+            'Gagal\nHari Ini',
+          ),
+        ],
       ),
     );
   }
+}
+
+class _Stat extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color bg;
+  final String value;
+  final String label;
+
+  const _Stat(this.icon, this.color, this.bg, this.value, this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          IconBadge(icon, color: color, background: bg, size: 36),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.text,
+            ),
+          ),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 10, color: AppColors.muted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VDivider extends StatelessWidget {
+  const _VDivider();
+
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 70, color: AppColors.border);
 }

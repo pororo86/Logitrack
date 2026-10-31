@@ -121,16 +121,18 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       if (!mounted) return;
       setState(() {
         _results = list;
-        if (list.isEmpty)
+        if (list.isEmpty) {
           _message = 'Alamat tidak ditemukan. Coba kata kunci lain.';
+        }
       });
     } on TimeoutException {
       if (mounted) {
         setState(() => _message = 'Pencarian terlalu lama. Cek internet Anda.');
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _message = 'Pencarian gagal. Cek internet Anda.');
+      }
     } finally {
       if (mounted) setState(() => _searching = false);
     }

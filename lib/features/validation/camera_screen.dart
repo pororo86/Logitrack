@@ -56,8 +56,9 @@ class _CameraScreenState extends State<CameraScreen>
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        if (mounted)
+        if (mounted) {
           setState(() => _error = 'Perangkat tidak memiliki kamera.');
+        }
         return;
       }
       final back = cameras.firstWhere(
