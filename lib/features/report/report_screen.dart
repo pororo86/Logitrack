@@ -6,54 +6,60 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/mock_data.dart';
 
-/// Laporan Pengiriman (statistik bulanan). Grafik digambar manual
-/// (tanpa package tambahan). Angka masih dummy -> ganti dari Laravel.
+/// Laporan Pengiriman (statistik 1 bulan). Grafik digambar manual,
+/// tanpa package tambahan. Angka masih dummy -> ganti dari Laravel.
 class ReportScreen extends StatelessWidget {
   const ReportScreen({super.key});
 
-  static const _done = 128;
+  static const _success = 128;
   static const _failed = 6;
+  static const _total = _success + _failed;
 
   @override
   Widget build(BuildContext context) {
-    const total = _done + _failed;
-    final donePct = (_done / total * 100).toStringAsFixed(1).replaceAll('.', ',');
-    final failPct = (_failed / total * 100).toStringAsFixed(1).replaceAll('.', ',');
+    final pct = (_success / _total * 100).round();
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         children: [
-          const Center(
-            child: Text(
-              'Laporan',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          const Text(
+            'Laporan Pengiriman',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.text,
             ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Statistik pengiriman dalam periode satu bulan',
+            style: TextStyle(fontSize: 12, color: AppColors.muted),
           ),
           const SizedBox(height: 14),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
+            child: const Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Periode',
-                        style: TextStyle(fontSize: 11, color: AppColors.muted),
+                        style: TextStyle(fontSize: 10, color: AppColors.muted),
                       ),
                       Text(
                         '1 Bulan Terakhir',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.calendar_month_outlined),
-                ),
+                Icon(Icons.calendar_month_outlined, color: AppColors.primary),
               ],
             ),
           ),
@@ -62,44 +68,52 @@ class ReportScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _MiniStat(
-                  Icons.check_circle,
-                  AppColors.success,
-                  '$_done',
-                  'Selesai',
+                  Icons.inventory_2_outlined,
+                  AppColors.primary,
+                  AppColors.softBlue,
+                  '$_total',
+                  'Total',
                 ),
               ),
               SizedBox(width: 10),
               Expanded(
                 child: _MiniStat(
-                  Icons.cancel,
+                  Icons.check,
+                  AppColors.success,
+                  AppColors.softGreen,
+                  '$_success',
+                  'Berhasil',
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: _MiniStat(
+                  Icons.close,
                   AppColors.danger,
+                  AppColors.softRed,
                   '$_failed',
                   'Gagal',
-                ),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: _MiniStat(
-                  Icons.local_shipping,
-                  AppColors.primary,
-                  '$total',
-                  'Total',
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
           AppCard(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Statistik Pengiriman (Per Hari)',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                 ),
-                const SizedBox(height: 12),
+                const Text(
+                  'Jumlah pengiriman selama 1 bulan',
+                  style: TextStyle(fontSize: 10.5, color: AppColors.muted),
+                ),
+                const SizedBox(height: 14),
                 SizedBox(
-                  height: 150,
+                  height: 140,
                   width: double.infinity,
                   child: CustomPaint(
                     painter: _LineChartPainter(MockData.dailyStats),
@@ -109,11 +123,11 @@ class ReportScreen extends StatelessWidget {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _AxisLabel('1 Sep'),
-                    _AxisLabel('8 Sep'),
-                    _AxisLabel('15 Sep'),
-                    _AxisLabel('22 Sep'),
-                    _AxisLabel('30 Sep'),
+                    _Axis('1'),
+                    _Axis('8'),
+                    _Axis('15'),
+                    _Axis('22'),
+                    _Axis('30 Sep'),
                   ],
                 ),
               ],
@@ -121,52 +135,110 @@ class ReportScreen extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           AppCard(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Distribusi Status (1 Bulan)',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     SizedBox(
-                      width: 96,
-                      height: 96,
+                      width: 84,
+                      height: 84,
                       child: CustomPaint(
-                        painter: _DonutPainter(_done / total),
-                        child: const Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '$total',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 18,
-                                ),
-                              ),
-                              Text(
-                                'Total',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.muted,
-                                ),
-                              ),
-                            ],
+                        painter: _DonutPainter(_success / _total),
+                        child: Center(
+                          child: Text(
+                            '$pct%',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: Column(
+                    const SizedBox(width: 22),
+                    const Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _Legend(AppColors.success, 'Selesai', '$donePct%'),
-                          const SizedBox(height: 10),
-                          _Legend(AppColors.danger, 'Gagal', '$failPct%'),
+                          Expanded(
+                            child: _Legend(
+                              'Berhasil',
+                              '$_success pengiriman',
+                              'Berhasil',
+                            ),
+                          ),
+                          Expanded(
+                            child: _Legend(
+                              'Gagal',
+                              '$_failed pengiriman',
+                              'Gagal',
+                            ),
+                          ),
                         ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          const AppCard(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Riwayat Kendaraan Dipakai',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                ),
+                SizedBox(height: 8),
+                _VehicleRow('B 9123 UXR', 12),
+                Divider(height: 14),
+                _VehicleRow('B 8765 KLP', 8),
+                Divider(height: 14),
+                _VehicleRow('B 1234 QWE', 6),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          const AppCard(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Gagal Pengiriman',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                ),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      '$_failed',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.danger,
+                      ),
+                    ),
+                    SizedBox(width: 18),
+                    Expanded(
+                      child: Text(
+                        'Alamat tidak valid 3  •  Penerima tidak ada 2\n'
+                        'Kendala operasional 1',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.muted,
+                          height: 1.5,
+                        ),
                       ),
                     ),
                   ],
@@ -183,10 +255,11 @@ class ReportScreen extends StatelessWidget {
 class _MiniStat extends StatelessWidget {
   final IconData icon;
   final Color color;
+  final Color bg;
   final String value;
   final String label;
 
-  const _MiniStat(this.icon, this.color, this.value, this.label);
+  const _MiniStat(this.icon, this.color, this.bg, this.value, this.label);
 
   @override
   Widget build(BuildContext context) {
@@ -194,15 +267,20 @@ class _MiniStat extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
         children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 4),
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+            child: Icon(icon, size: 13, color: color),
+          ),
+          const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
           ),
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+            style: const TextStyle(fontSize: 10.5, color: AppColors.muted),
           ),
         ],
       ),
@@ -210,38 +288,64 @@ class _MiniStat extends StatelessWidget {
   }
 }
 
-class _AxisLabel extends StatelessWidget {
+class _Axis extends StatelessWidget {
   final String text;
-  const _AxisLabel(this.text);
+  const _Axis(this.text);
 
   @override
   Widget build(BuildContext context) => Text(
     text,
-    style: const TextStyle(fontSize: 10, color: AppColors.muted),
+    style: const TextStyle(fontSize: 9.5, color: AppColors.muted),
   );
 }
 
 class _Legend extends StatelessWidget {
-  final Color color;
-  final String label;
-  final String pct;
+  final String title;
+  final String sub;
+  final String chip;
+  const _Legend(this.title, this.sub, this.chip);
 
-  const _Legend(this.color, this.label, this.pct);
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+        ),
+        Text(
+          sub,
+          style: const TextStyle(fontSize: 10.5, color: AppColors.muted),
+        ),
+        const SizedBox(height: 8),
+        StatusChip.of(chip),
+      ],
+    );
+  }
+}
+
+class _VehicleRow extends StatelessWidget {
+  final String plate;
+  final int count;
+  const _VehicleRow(this.plate, this.count);
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Icon(Icons.circle, size: 10, color: color),
-        const SizedBox(width: 8),
         Text(
-          label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        ),
-        const Spacer(),
-        Text(
-          pct,
+          plate,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        ),
+        Text(
+          '$count pengiriman',
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primary,
+          ),
         ),
       ],
     );
@@ -257,8 +361,8 @@ class _LineChartPainter extends CustomPainter {
     final grid = Paint()
       ..color = AppColors.border
       ..strokeWidth = 1;
-    for (int i = 0; i <= 4; i++) {
-      final y = size.height * i / 4;
+    for (int i = 0; i <= 3; i++) {
+      final y = size.height * i / 3;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
 
@@ -273,20 +377,6 @@ class _LineChartPainter extends CustomPainter {
     for (final p in pts.skip(1)) {
       line.lineTo(p.dx, p.dy);
     }
-    final fill = Path.from(line)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..shader = const LinearGradient(
-          colors: [Color(0x553478F6), Color(0x003478F6)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ).createShader(Offset.zero & size),
-    );
     canvas.drawPath(
       line,
       Paint()
@@ -296,14 +386,14 @@ class _LineChartPainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round,
     );
     for (final p in pts) {
-      canvas.drawCircle(p, 3, Paint()..color = Colors.white);
+      canvas.drawCircle(p, 3.2, Paint()..color = Colors.white);
       canvas.drawCircle(
         p,
-        3,
+        3.2,
         Paint()
           ..color = AppColors.primary
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
+          ..strokeWidth = 1.6,
       );
     }
   }
@@ -313,12 +403,12 @@ class _LineChartPainter extends CustomPainter {
 }
 
 class _DonutPainter extends CustomPainter {
-  final double doneRatio;
-  _DonutPainter(this.doneRatio);
+  final double ratio;
+  _DonutPainter(this.ratio);
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 12.0;
+    const stroke = 10.0;
     final rect = Rect.fromLTWH(
       stroke / 2,
       stroke / 2,
@@ -329,7 +419,7 @@ class _DonutPainter extends CustomPainter {
       ..color = c
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke;
-    final sweep = 2 * math.pi * doneRatio;
+    final sweep = 2 * math.pi * ratio;
     canvas.drawArc(rect, -math.pi / 2, sweep, false, p(AppColors.success));
     canvas.drawArc(
       rect,
@@ -341,5 +431,5 @@ class _DonutPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DonutPainter old) => old.doneRatio != doneRatio;
+  bool shouldRepaint(covariant _DonutPainter old) => old.ratio != ratio;
 }

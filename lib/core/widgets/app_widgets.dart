@@ -27,14 +27,7 @@ class AppCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color ?? Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x143478F6),
-            blurRadius: 16,
-            offset: Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
       ),
       child: child,
     );
@@ -47,7 +40,6 @@ class PrimaryButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool outlined;
   final bool loading;
-  final IconData? icon;
 
   const PrimaryButton({
     super.key,
@@ -55,7 +47,6 @@ class PrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.outlined = false,
     this.loading = false,
-    this.icon,
   });
 
   @override
@@ -64,15 +55,6 @@ class PrimaryButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
     );
     const textStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w700);
-
-    final content = Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
-        Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
-      ],
-    );
 
     return SizedBox(
       width: double.infinity,
@@ -84,10 +66,9 @@ class PrimaryButton extends StatelessWidget {
                 shape: shape,
                 textStyle: textStyle,
                 foregroundColor: AppColors.primary,
-                backgroundColor: Colors.white,
-                side: const BorderSide(color: AppColors.primary, width: 1.2),
+                side: const BorderSide(color: AppColors.border),
               ),
-              child: content,
+              child: Text(label),
             )
           : FilledButton(
               onPressed: loading ? null : onPressed,
@@ -105,7 +86,7 @@ class PrimaryButton extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : content,
+                  : Text(label),
             ),
     );
   }
@@ -220,20 +201,22 @@ class StatusChip extends StatelessWidget {
     required this.background,
   });
 
-  /// Chip otomatis dari teks status: Selesai / Berjalan / Gagal.
+  /// Chip otomatis dari teks status (sesuai Figma):
+  /// Selesai = hijau, Berjalan = biru, Terlambat/Gagal = merah.
   factory StatusChip.of(String status) {
     switch (status) {
+      case 'Berjalan':
+        return StatusChip(
+          label: status,
+          color: AppColors.primary,
+          background: AppColors.softBlue,
+        );
+      case 'Terlambat':
       case 'Gagal':
         return StatusChip(
           label: status,
           color: AppColors.danger,
           background: AppColors.softRed,
-        );
-      case 'Berjalan':
-        return StatusChip(
-          label: status,
-          color: const Color(0xFFC98A12),
-          background: AppColors.softYellow,
         );
       default:
         return StatusChip(
@@ -412,30 +395,19 @@ class PhotoBox extends StatelessWidget {
                 if (hasPhoto)
                   Image.file(file!, fit: BoxFit.cover)
                 else
-                  GestureDetector(
-                    onTap: busy ? null : onCapture,
-                    child: CustomPaint(
-                      painter: _DashedBoxPainter(),
-                      child: const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.photo_camera_outlined,
-                              size: 34,
-                              color: AppColors.primary,
-                            ),
-                            SizedBox(height: 6),
-                            Text(
-                              'Ambil Foto',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.text,
-                              ),
-                            ),
-                          ],
-                        ),
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFEFF3FA), Color(0xFFDDE5F2)],
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.photo_camera_outlined,
+                        size: 64,
+                        color: AppColors.muted,
                       ),
                     ),
                   ),
@@ -617,71 +589,12 @@ class _MapPainter extends CustomPainter {
   bool shouldRepaint(covariant _MapPainter old) => old.showRoute != showRoute;
 }
 
-class _DashedBoxPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rrect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      const Radius.circular(14),
-    );
-    canvas.drawRRect(
-      rrect,
-      Paint()..color = AppColors.softBlue.withValues(alpha: 0.55),
-    );
-    final paint = Paint()
-      ..color = AppColors.primary.withValues(alpha: 0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    final path = Path()..addRRect(rrect);
-    for (final m in path.computeMetrics()) {
-      double d = 0;
-      while (d < m.length) {
-        canvas.drawPath(m.extractPath(d, d + 5), paint);
-        d += 9;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
-}
-
-/// Kotak ikon lembut (dipakai di kartu & daftar).
-class IconBadge extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final Color background;
-  final double size;
-
-  const IconBadge(
-    this.icon, {
-    super.key,
-    this.color = AppColors.primary,
-    this.background = AppColors.softBlue,
-    this.size = 38,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(icon, color: color, size: size * 0.52),
-    );
-  }
-}
-
-/// Baris pengiriman (Dashboard & Riwayat).
-class ShipmentTile extends StatelessWidget {
+/// Kartu pengiriman di layar Riwayat (ikon, nomor, status, "Detail >").
+class HistoryTile extends StatelessWidget {
   final RecentShipment item;
-  final bool detailed; // true = tampilkan perusahaan, tanggal & panah
   final VoidCallback? onTap;
 
-  const ShipmentTile(this.item, {super.key, this.detailed = false, this.onTap});
+  const HistoryTile(this.item, {super.key, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -690,8 +603,21 @@ class ShipmentTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: AppCard(
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const IconBadge(Icons.local_shipping_outlined),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.softBlue,
+                borderRadius: BorderRadius.circular(19),
+              ),
+              child: const Icon(
+                Icons.inventory_2_outlined,
+                color: AppColors.primary,
+                size: 18,
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -704,18 +630,9 @@ class ShipmentTile extends StatelessWidget {
                       fontSize: 13,
                     ),
                   ),
-                  if (detailed && item.company != null)
-                    Text(
-                      item.company!,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        color: AppColors.muted,
-                      ),
-                    ),
+                  const SizedBox(height: 2),
                   Text(
-                    detailed
-                        ? '${item.date} • ${item.points} Tujuan'
-                        : '${item.points} Tujuan',
+                    '${item.points} titik tujuan • ${item.date}',
                     style: const TextStyle(
                       fontSize: 11.5,
                       color: AppColors.muted,
@@ -724,9 +641,21 @@ class ShipmentTile extends StatelessWidget {
                 ],
               ),
             ),
-            StatusChip.of(item.status),
-            if (detailed)
-              const Icon(Icons.chevron_right, color: AppColors.text),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                StatusChip.of(item.status),
+                const SizedBox(height: 10),
+                const Text(
+                  'Detail ›',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

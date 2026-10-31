@@ -25,15 +25,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       body: switch (_tab) {
         0 => _home(),
-        1 => const HistoryScreen(),
-        2 => const ReportScreen(),
+        2 => const HistoryScreen(),
+        3 => const ReportScreen(),
         _ => const ProfileScreen(),
       },
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         backgroundColor: Colors.white,
         indicatorColor: AppColors.softBlue,
-        onDestinationSelected: (i) => setState(() => _tab = i),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        onDestinationSelected: (i) {
+          // "Kirim" = aksi cepat Buat Pengiriman, bukan halaman tab.
+          if (i == 1) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SetShipmentScreen()),
+            );
+            return;
+          }
+          setState(() => _tab = i);
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -41,13 +51,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label: 'Beranda',
           ),
           NavigationDestination(
-            icon: Icon(Icons.local_shipping_outlined),
-            selectedIcon: Icon(Icons.local_shipping, color: AppColors.primary),
-            label: 'Pengiriman',
+            icon: Icon(Icons.add),
+            selectedIcon: Icon(Icons.add, color: AppColors.primary),
+            label: 'Kirim',
           ),
           NavigationDestination(
-            icon: Icon(Icons.assessment_outlined),
-            selectedIcon: Icon(Icons.assessment, color: AppColors.primary),
+            icon: Icon(Icons.view_list_outlined),
+            selectedIcon: Icon(Icons.view_list, color: AppColors.primary),
+            label: 'Riwayat',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart, color: AppColors.primary),
             label: 'Laporan',
           ),
           NavigationDestination(
@@ -85,7 +100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Halo, ${MockData.driverName} 👋',
+                      'Halo, ${MockData.driverName}',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -93,7 +108,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     const Text(
-                      'Selamat bertugas hari ini!',
+                      'Selamat bertugas hari ini',
                       style: TextStyle(color: AppColors.muted, fontSize: 12.5),
                     ),
                   ],
@@ -120,16 +135,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _StatsCard(),
-              const SizedBox(height: 14),
-              PrimaryButton(
-                label: 'Buat Pengiriman',
-                icon: Icons.add,
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SetShipmentScreen()),
-                ),
-              ),
-              const SizedBox(height: 14),
               AppCard(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -168,15 +173,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    const StepIndicator(
-                      active: 1,
-                      labels: [
-                        'Muat Barang',
-                        'Perjalanan',
-                        'Bongkar',
-                        'Selesai',
-                      ],
-                    ),
+                    const StepIndicator(active: 2),
                     const SizedBox(height: 16),
                     PrimaryButton(
                       label: 'Lanjutkan Pengiriman',
@@ -188,6 +185,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _QuickAction(
+                      icon: Icons.add,
+                      label: 'Buat Pengiriman',
+                      filled: true,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SetShipmentScreen(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _QuickAction(
+                      icon: Icons.schedule,
+                      label: 'Riwayat Pengiriman',
+                      onTap: () => setState(() => _tab = 2),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
               Row(
@@ -202,15 +224,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => setState(() => _tab = 1),
-                    child: const Text('Lihat semua'),
+                    onPressed: () => setState(() => _tab = 2),
+                    child: const Text('Lihat semua ›'),
                   ),
                 ],
               ),
               for (final r in MockData.recent)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: ShipmentTile(r),
+                  child: AppCard(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                r.number,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${r.points} titik pengiriman • ${r.date}',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        StatusChip.of(r.status),
+                      ],
+                    ),
+                  ),
                 ),
               const SizedBox(height: 12),
             ],
@@ -221,84 +271,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class _StatsCard extends StatelessWidget {
-  const _StatsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    // Angka dummy -> ganti dari Laravel.
-    return const AppCard(
-      padding: EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          _Stat(
-            Icons.local_shipping_outlined,
-            AppColors.primary,
-            AppColors.softBlue,
-            '3',
-            'Pengiriman\nAktif',
-          ),
-          _VDivider(),
-          _Stat(
-            Icons.check_circle,
-            AppColors.success,
-            AppColors.softGreen,
-            '12',
-            'Selesai\nHari Ini',
-          ),
-          _VDivider(),
-          _Stat(
-            Icons.cancel_outlined,
-            AppColors.danger,
-            AppColors.softRed,
-            '2',
-            'Gagal\nHari Ini',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
+class _QuickAction extends StatelessWidget {
   final IconData icon;
-  final Color color;
-  final Color bg;
-  final String value;
   final String label;
+  final bool filled;
+  final VoidCallback onTap;
 
-  const _Stat(this.icon, this.color, this.bg, this.value, this.label);
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.filled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          IconBadge(icon, color: color, background: bg, size: 36),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Column(
+          children: [
+            Icon(icon, color: AppColors.primary, size: 26),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 10, color: AppColors.muted),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-}
-
-class _VDivider extends StatelessWidget {
-  const _VDivider();
-
-  @override
-  Widget build(BuildContext context) =>
-      Container(width: 1, height: 70, color: AppColors.border);
 }

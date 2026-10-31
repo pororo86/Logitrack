@@ -5,7 +5,7 @@ import '../../core/widgets/app_widgets.dart';
 import '../../data/mock_data.dart';
 import '../auth/login_screen.dart';
 
-/// Profil driver + menu + Keluar Akun.
+/// Profil driver: kartu identitas, informasi pribadi, pengaturan, keluar.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -19,104 +19,174 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         children: [
-          const Center(
-            child: Text(
-              'Profil',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          const Text(
+            'Profil',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.text,
             ),
           ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Row(
+          const SizedBox(height: 16),
+          AppCard(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, size: 34, color: AppColors.primary),
+                Container(
+                  width: 62,
+                  height: 62,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.softBlue,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Text(
+                    MockData.driverInitials,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
+                  ),
                 ),
-                SizedBox(width: 14),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         MockData.driverFullName,
                         style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
                           fontSize: 17,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      Text(
-                        MockData.driverRole,
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Driver • ID ${MockData.driverId}',
+                        style: TextStyle(fontSize: 12, color: AppColors.muted),
                       ),
-                      Text(
-                        MockData.driverCompany,
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const StatusChip(
+                            label: 'Akun Aktif',
+                            color: AppColors.success,
+                            background: AppColors.softGreen,
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => _soon(context, 'Edit Profil'),
+                            child: const Text(
+                              'Edit Profil',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.edit_outlined, color: Colors.white, size: 18),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 22),
+          const _SectionTitle('Informasi Pribadi'),
+          const SizedBox(height: 10),
+          const AppCard(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Column(
+              children: [
+                _InfoRow('Email', MockData.driverEmail),
+                _InfoRow('Nomor telepon', MockData.driverPhone),
+                _InfoRow('Perusahaan', MockData.driverCompany),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          const _SectionTitle('Pengaturan'),
+          const SizedBox(height: 10),
           AppCard(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(
               children: [
                 _MenuTile(
-                  Icons.person_outline,
-                  'Informasi Akun',
-                  () => _soon(context, 'Informasi Akun'),
+                  icon: Icons.lock_outline,
+                  title: 'Akun & Keamanan',
+                  subtitle: 'Password dan akses akun',
+                  onTap: () => _soon(context, 'Akun & Keamanan'),
                 ),
+                const Divider(height: 1, indent: 16, endIndent: 16),
                 _MenuTile(
-                  Icons.settings_outlined,
-                  'Pengaturan',
-                  () => _soon(context, 'Pengaturan'),
-                ),
-                _MenuTile(
-                  Icons.help_outline,
-                  'Bantuan',
-                  () => _soon(context, 'Bantuan'),
+                  icon: Icons.help_outline,
+                  title: 'Bantuan',
+                  subtitle: 'Pusat bantuan LogiTrack',
+                  onTap: () => _soon(context, 'Bantuan'),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          OutlinedButton.icon(
+          // Tidak ada di Figma, tapi dibutuhkan untuk logout.
+          TextButton.icon(
             onPressed: () => Navigator.of(context, rootNavigator: true)
                 .pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                   (_) => false,
                 ),
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, size: 18),
             label: const Text('Keluar Akun'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-              foregroundColor: AppColors.danger,
-              backgroundColor: Colors.white,
-              side: const BorderSide(color: AppColors.danger, width: 1.2),
-              textStyle: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String text;
+  const _SectionTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) => Text(
+    text,
+    style: const TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w800,
+      color: AppColors.text,
+    ),
+  );
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -127,24 +197,33 @@ class ProfileScreen extends StatelessWidget {
 
 class _MenuTile extends StatelessWidget {
   final IconData icon;
-  final String label;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
 
-  const _MenuTile(this.icon, this.label, this.onTap);
+  const _MenuTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Material transparan: ListTile butuh Material sendiri agar efek sentuhan
-    // tidak tertutup latar putih AppCard.
+    // Material transparan agar efek sentuhan ListTile tidak tertutup AppCard.
     return Material(
       color: Colors.transparent,
       child: ListTile(
-        leading: Icon(icon, color: AppColors.text),
+        leading: Icon(icon, color: AppColors.primary, size: 20),
         title: Text(
-          label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          title,
+          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
         ),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.text),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(fontSize: 11, color: AppColors.muted),
+        ),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
         onTap: onTap,
       ),
     );

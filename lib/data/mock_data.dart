@@ -20,16 +20,9 @@ class RecentShipment {
   final String number;
   final int points;
   final String date;
-  final String status; // Selesai | Berjalan | Gagal
-  final String? company;
+  final String status;
 
-  const RecentShipment(
-    this.number,
-    this.points,
-    this.date,
-    this.status, {
-    this.company,
-  });
+  const RecentShipment(this.number, this.points, this.date, this.status);
 }
 
 /// Satu bukti validasi (foto + GPS). Nanti dikirim ke Laravel.
@@ -58,7 +51,10 @@ class ValidationRecord {
 class MockData {
   static const driverName = 'Budi';
   static const driverFullName = 'Budi Santoso';
-  static const driverRole = 'Driver';
+  static const driverInitials = 'BS';
+  static const driverId = 'DRV-0092';
+  static const driverEmail = 'driver@perusahaan.com';
+  static const driverPhone = '+62 812-3456-7890';
   static const driverCompany = 'PT Sumber Makmur';
   static const shipmentNumber = 'TRK-20261004-001';
 
@@ -96,64 +92,22 @@ class MockData {
     ),
   ];
 
-  static const recent = [
-    RecentShipment(
-      'TRK-20260925-003',
-      2,
-      '25 Sep 2026',
-      'Selesai',
-      company: 'PT DEF Corp',
-    ),
-    RecentShipment(
-      'TRK-20260924-002',
-      3,
-      '24 Sep 2026',
-      'Selesai',
-      company: 'PT ABC Indonesia',
-    ),
-    RecentShipment(
-      'TRK-20260923-001',
-      1,
-      '23 Sep 2026',
-      'Selesai',
-      company: 'PT XYZ Logistic',
-    ),
-  ];
-
-  /// Riwayat lengkap (layar Riwayat Pengiriman). Ganti dengan data Laravel.
+  /// Riwayat lengkap (layar Riwayat). Ganti dengan data Laravel nanti.
   static const history = [
-    RecentShipment(
-      'TRK-20260926-001',
-      3,
-      '26 Sep 2026',
-      'Selesai',
-      company: 'PT ABC Indonesia',
-    ),
-    RecentShipment(
-      'TRK-20260925-003',
-      2,
-      '25 Sep 2026',
-      'Gagal',
-      company: 'PT DEF Corp',
-    ),
-    RecentShipment(
-      'TRK-20260924-008',
-      4,
-      '24 Sep 2026',
-      'Selesai',
-      company: 'PT XYZ Logistic',
-    ),
-    RecentShipment(
-      'TRK-20260923-001',
-      1,
-      '23 Sep 2026',
-      'Selesai',
-      company: 'PT XYZ Logistic',
-    ),
+    RecentShipment('TRK-20261031-001', 3, '31 Okt 2026', 'Selesai'),
+    RecentShipment('TRK-20261029-003', 2, '29 Okt 2026', 'Selesai'),
+    RecentShipment('TRK-20261028-008', 4, '28 Okt 2026', 'Berjalan'),
+    RecentShipment('TRK-20261025-004', 1, '25 Okt 2026', 'Terlambat'),
+    RecentShipment('TRK-20261022-006', 3, '22 Okt 2026', 'Selesai'),
   ];
 
-  /// Statistik harian untuk grafik Laporan.
-  static const dailyStats = <double>[1, 3, 6, 4, 7, 5, 9, 12, 15, 11, 14, 17];
+  /// Statistik harian untuk grafik Laporan (dummy).
+  static const dailyStats = <double>[3, 5, 2, 6, 4, 7, 5, 8, 6, 9, 7, 12];
+
+  static const recent = [
+    RecentShipment('TRK-20261029-003', 2, '29 Okt 2026', 'Selesai'),
+    RecentShipment('TRK-20261028-008', 4, '28 Okt 2026', 'Berjalan'),
+  ];
 }
 
 /// Status alur yang sedang berjalan (hanya untuk tahap UI).
