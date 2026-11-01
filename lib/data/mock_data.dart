@@ -48,7 +48,80 @@ class ValidationRecord {
   });
 }
 
+class Vehicle {
+  final String id;
+  final String name;
+  final String plate;
+  final String type;
+  final String capacity;
+  final bool available;
+
+  const Vehicle({
+    required this.id,
+    required this.name,
+    required this.plate,
+    required this.type,
+    required this.capacity,
+    this.available = true,
+  });
+}
+
 class MockData {
+  static const vehicles = <Vehicle>[
+    Vehicle(
+      id: 'VH-001',
+      name: 'Mitsubishi Canter',
+      plate: 'B 9213 UCJ',
+      type: 'Truk Engkel',
+      capacity: '5 Ton',
+    ),
+    Vehicle(
+      id: 'VH-002',
+      name: 'Mitsubishi Canter',
+      plate: 'B 9123 CRX',
+      type: 'Truk Engkel',
+      capacity: '5 Ton',
+    ),
+    Vehicle(
+      id: 'VH-003',
+      name: 'Mitsubishi Fuso',
+      plate: 'B 9648 CRU',
+      type: 'Truk Fuso Engkel',
+      capacity: '20 Ton',
+    ),
+    Vehicle(
+      id: 'VH-004',
+      name: 'Mitsubishi Canter',
+      plate: 'B 9128 CRX',
+      type: 'Truk Engkel',
+      capacity: '5 Ton',
+    ),
+    Vehicle(
+      id: 'VH-005',
+      name: 'Mitsubishi Canter',
+      plate: 'B 9099 CRX',
+      type: 'Truk Engkel',
+      capacity: '5 Ton',
+    ),
+    Vehicle(
+      id: 'VH-006',
+      name: 'Mitsubishi Canter',
+      plate: 'B 9125 CRX',
+      type: 'Truk Engkel',
+      capacity: '5 Ton',
+    ),
+    Vehicle(
+      id: 'VH-008',
+      name: 'Mitsubishi Canter',
+      plate: 'B 9124 CRX',
+      type: 'Truk Dobel',
+      capacity: '7 Ton',
+      available: false,
+    ),
+  ];
+
+  static Vehicle? selectedVehicle;
+
   static const driverName = 'Budi';
   static const driverFullName = 'Budi Santoso';
   static const driverInitials = 'BS';

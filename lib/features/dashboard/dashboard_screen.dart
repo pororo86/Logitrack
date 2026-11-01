@@ -4,11 +4,11 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/mock_data.dart';
+import '../shipment/vehicle_selection_screen.dart';
 import '../history/history_screen.dart';
 import '../profile/profile_screen.dart';
 import '../report/report_screen.dart';
 import '../shipment/process_screen.dart';
-import '../shipment/set_shipment_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -38,7 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // "Kirim" = aksi cepat Buat Pengiriman, bukan halaman tab.
           if (i == 1) {
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SetShipmentScreen()),
+              MaterialPageRoute(builder: (_) => const VehicleSelectionScreen()),
             );
             return;
           }
@@ -196,7 +196,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       filled: true,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const SetShipmentScreen(),
+                          builder: (_) => const VehicleSelectionScreen(),
                         ),
                       ),
                     ),

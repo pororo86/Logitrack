@@ -13,6 +13,8 @@ import '../shipment/in_transit_screen.dart';
 import '../shipment/next_destination_screen.dart';
 import '../shipment/process_screen.dart';
 
+import 'package:image_picker/image_picker.dart';
+
 enum ValidationKind {
   ready, // siap kirim
   loaded, // selesai muat
@@ -33,6 +35,7 @@ class ValidationScreen extends StatefulWidget {
 class _ValidationScreenState extends State<ValidationScreen> {
   final _photoService = PhotoService();
   final _locationService = LocationService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   PhotoResult? _photo;
   GpsFix? _fix;
@@ -192,6 +195,50 @@ class _ValidationScreenState extends State<ValidationScreen> {
     }
   }
 
+  Future<void> _pickFromGallery() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+      _locError = null;
+    });
+
+    try {
+      await _locationService.ensureReady();
+      if (!mounted) return;
+
+      final selected = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+      );
+
+      if (selected == null || !mounted) return;
+
+      final photo = await _photoService.processFile(selected.path);
+      final fix = await _locationService.getCurrent();
+
+      if (!mounted) return;
+
+      setState(() {
+        _photo = photo;
+        _fix = fix;
+      });
+    } on LocationException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _locError = e;
+        });
+      }
+    } on PhotoException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Terjadi kesalahan: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _clear() => setState(() {
     _photo = null;
     _fix = null;
@@ -276,6 +323,7 @@ class _ValidationScreenState extends State<ValidationScreen> {
                     afterBytes: _photo?.compressedBytes,
                     busy: _busy,
                     onCapture: _capture,
+                    onPickGallery: _pickFromGallery,
                     onRemove: _clear,
                   ),
                   if (_error != null) ...[

@@ -366,6 +366,7 @@ class PhotoBox extends StatelessWidget {
   final int? beforeBytes;
   final int? afterBytes;
   final bool busy;
+  final VoidCallback onPickGallery;
   final VoidCallback onCapture;
   final VoidCallback onRemove;
 
@@ -374,6 +375,7 @@ class PhotoBox extends StatelessWidget {
     required this.file,
     required this.onCapture,
     required this.onRemove,
+    required this.onPickGallery,
     this.beforeBytes,
     this.afterBytes,
     this.busy = false,
@@ -435,26 +437,48 @@ class PhotoBox extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          height: 44,
-          child: FilledButton.tonalIcon(
-            onPressed: busy ? null : onCapture,
-            icon: const Icon(Icons.camera_alt_outlined, size: 20),
-            label: Text(
-              busy
-                  ? 'Memproses foto & GPS...'
-                  : (hasPhoto ? 'Ambil Ulang' : 'Ambil Foto'),
-            ),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.softBlue,
-              foregroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 44,
+                child: FilledButton.tonalIcon(
+                  onPressed: busy ? null : onCapture,
+                  icon: const Icon(Icons.camera_alt_outlined, size: 19),
+                  label: Text(
+                    busy
+                        ? 'Memproses...'
+                        : (hasPhoto ? 'Ganti Kamera' : 'Kamera'),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.softBlue,
+                    foregroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : onPickGallery,
+                  icon: const Icon(Icons.photo_library_outlined, size: 19),
+                  label: const Text('Galeri'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         if (hasPhoto && beforeBytes != null && afterBytes != null)
           Container(

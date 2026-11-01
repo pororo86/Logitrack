@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "D:/c++/.vscode/Flutter Project/gcmrlogistic/linux"
+  "cmake.sourceDirectory": "D:/c++/.vscode/Flutter Project/gcmrlogistic/linux",
+  "java.configuration.updateBuildConfiguration": "interactive"
 }
