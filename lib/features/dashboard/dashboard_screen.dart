@@ -9,6 +9,7 @@ import '../history/history_screen.dart';
 import '../profile/profile_screen.dart';
 import '../report/report_screen.dart';
 import '../shipment/process_screen.dart';
+import '../../core/auth/app_services.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -100,7 +101,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Halo, ${MockData.driverName}',
+                      'Halo, ${AppServices.I.session.user?.firstName ?? MockData.driverName}',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -116,11 +117,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const Icon(Icons.notifications_none, color: AppColors.text),
               const SizedBox(width: 12),
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 20,
                 backgroundColor: AppColors.primary,
                 child: Text(
-                  'B',
+                  AppServices.I.session.user?.initial ?? 'B',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,

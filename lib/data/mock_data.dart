@@ -5,6 +5,7 @@ class Destination {
   final double lat;
   final double lng;
   final int radius;
+  final int? companyId;
 
   const Destination({
     required this.name,
@@ -13,6 +14,7 @@ class Destination {
     required this.lat,
     required this.lng,
     this.radius = 150,
+    this.companyId,
   });
 }
 
@@ -55,6 +57,7 @@ class Vehicle {
   final String type;
   final String capacity;
   final bool available;
+  final int? serverId;
 
   const Vehicle({
     required this.id,
@@ -63,6 +66,7 @@ class Vehicle {
     required this.type,
     required this.capacity,
     this.available = true,
+    this.serverId,
   });
 }
 
@@ -192,11 +196,17 @@ class FlowState {
   static DateTime startedAt = DateTime.now();
   static final List<ValidationRecord> records = [];
 
+  /// Pengiriman di server yang sedang dijalankan (dipakai mulai F3).
+  static int? shipmentId;
+  static String? shipmentNumber;
+
   static void reset() {
     destIndex = 0;
     toWarehouse = false;
     skipped = 0;
     startedAt = DateTime.now();
     records.clear();
+    shipmentId = null;
+    shipmentNumber = null;
   }
 }

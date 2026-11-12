@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/auth/app_services.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/mock_data.dart';
@@ -13,7 +15,57 @@ class VehicleSelectionScreen extends StatefulWidget {
 }
 
 class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
+  List<Vehicle> _vehicles = [];
   Vehicle? _selected;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final list = await AppServices.I.shipments.vehicles();
+      if (!mounted) return;
+
+      final vehicles = list
+          .map(
+            (v) => Vehicle(
+              id: v.code,
+              serverId: v.id,
+              name: v.name,
+              plate: v.plateNumber,
+              type: v.type,
+              capacity: v.capacityLabel ?? '-',
+              available: v.available,
+            ),
+          )
+          .toList();
+
+      setState(() {
+        _vehicles = vehicles;
+
+        // Kendaraan yang dipilih sebelumnya, atau kendaraan bawaan driver.
+        final wantedId =
+            _selected?.id ?? AppServices.I.session.user?.driver?.vehicle?.code;
+        _selected = vehicles
+            .where((v) => v.id == wantedId && v.available)
+            .firstOrNull;
+      });
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   void _continue() {
     if (_selected == null) {
@@ -37,28 +89,41 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
         child: Column(
           children: [
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  const Text(
-                    'Kendaraan Pengiriman',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.text,
+              child: RefreshIndicator(
+                onRefresh: _load,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    const Text(
+                      'Kendaraan Pengiriman',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.text,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Pilih kendaraan yang akan digunakan '
-                    'untuk proses pengiriman.',
-                    style: TextStyle(color: AppColors.muted, fontSize: 13),
-                  ),
-                  const SizedBox(height: 20),
-
-                  for (final vehicle in MockData.vehicles)
-                    _vehicleCard(vehicle),
-                ],
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Pilih kendaraan yang akan digunakan untuk proses pengiriman.',
+                      style: TextStyle(color: AppColors.muted, fontSize: 13),
+                    ),
+                    const SizedBox(height: 20),
+                    if (_loading && _vehicles.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (_error != null)
+                      _errorBlock()
+                    else if (_vehicles.isEmpty)
+                      const AppCard(
+                        child: Text('Belum ada kendaraan terdaftar.'),
+                      )
+                    else
+                      for (final vehicle in _vehicles) _vehicleCard(vehicle),
+                  ],
+                ),
               ),
             ),
             Padding(
@@ -70,6 +135,30 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _errorBlock() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDECEC),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _error!,
+            style: const TextStyle(
+              color: AppColors.danger,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          TextButton(onPressed: _load, child: const Text('Coba lagi')),
+        ],
       ),
     );
   }

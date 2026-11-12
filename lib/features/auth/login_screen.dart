@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
-import '../dashboard/dashboard_screen.dart';
+
+import 'package:flutter/foundation.dart';
+
+import '../../core/auth/app_services.dart';
+import '../../core/config/api_config.dart';
+import '../../core/network/api_exception.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,11 +17,20 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _email = TextEditingController(text: 'budi@logitrack.test');
-  final _password = TextEditingController(text: 'password');
+  final _email = TextEditingController(
+    text: kDebugMode ? 'budi@logitrack.test' : '',
+  );
+  final _password = TextEditingController(text: kDebugMode ? 'password' : '');
+  String? _error;
   bool _hide = true;
   bool _remember = true;
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _error = AppServices.I.session.takeNotice();
+  }
 
   @override
   void dispose() {
@@ -26,12 +40,35 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 800)); // simulasi API
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const DashboardScreen()),
-    );
+    final email = _email.text.trim();
+    final password = _password.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Email dan password wajib diisi.');
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      await AppServices.I.session.login(email: email, password: password);
+      // AuthGate otomatis pindah ke Dashboard.
+    } on ApiException catch (e) {
+      var message = e.fieldError('email') ?? e.message;
+      if (kDebugMode && e.statusCode == null) {
+        message =
+            '$message\n[${ApiConfig.baseUrl}]'; // membantu mencari salah alamat
+      }
+      if (mounted) setState(() => _error = message);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Terjadi kesalahan. Coba lagi.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -120,6 +157,38 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
               const SizedBox(height: 8),
+              if (_error != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDECEC),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: AppColors.danger,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(
+                            color: AppColors.danger,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               PrimaryButton(
                 label: 'Masuk',
                 loading: _loading,

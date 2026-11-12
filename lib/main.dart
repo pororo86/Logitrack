@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'core/auth/app_services.dart';
 import 'core/theme/app_theme.dart';
-import 'features/auth/login_screen.dart';
+import 'features/auth/auth_gate.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  AppServices.use(AppServices.create());
   runApp(const LogiTrackApp());
 }
 
@@ -16,7 +19,7 @@ class LogiTrackApp extends StatelessWidget {
       title: 'LogiTrack',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: const LoginScreen(),
+      home: const AuthGate(),
     );
   }
 }

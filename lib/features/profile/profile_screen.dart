@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/mock_data.dart';
-import '../auth/login_screen.dart';
+import '../../core/auth/app_services.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,10 +21,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _name = MockData.driverFullName;
-    _email = MockData.driverEmail;
-    _phone = MockData.driverPhone;
-    _company = MockData.driverCompany;
+    final user = AppServices.I.session.user;
+    _name = user?.name ?? MockData.driverFullName;
+    _email = user?.email ?? MockData.driverEmail;
+    _phone = user?.phone ?? MockData.driverPhone;
+    _company = user?.driver?.companyName ?? MockData.driverCompany;
   }
 
   Future<void> _editProfile() async {
@@ -170,8 +171,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 3),
-                      const Text(
-                        'Driver • ID ${MockData.driverId}',
+                      Text(
+                        'Driver • ID ${AppServices.I.session.user?.driver?.driverCode ?? MockData.driverId}',
                         style: TextStyle(fontSize: 12, color: AppColors.muted),
                       ),
                       const SizedBox(height: 8),
@@ -282,11 +283,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           const SizedBox(height: 20),
           TextButton.icon(
-            onPressed: () {
-              Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (_) => false,
+            onPressed: () async {
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('Keluar akun?'),
+                  content: const Text(
+                    'Anda harus masuk lagi untuk melanjutkan.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: const Text('Batal'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      child: const Text('Keluar'),
+                    ),
+                  ],
+                ),
               );
+              if (ok == true) {
+                await AppServices.I.session.logout();
+              }
             },
             icon: const Icon(Icons.logout, size: 18),
             label: const Text('Keluar Akun'),
