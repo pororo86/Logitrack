@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'camera_screen.dart';
+import '../../core/auth/app_services.dart';
 import '../../core/config/app_config.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_widgets.dart';
@@ -12,6 +13,7 @@ import '../shipment/completed_screen.dart';
 import '../shipment/in_transit_screen.dart';
 import '../shipment/next_destination_screen.dart';
 import '../shipment/process_screen.dart';
+import 'camera_screen.dart';
 
 enum ValidationKind {
   ready, // siap kirim
@@ -31,12 +33,23 @@ class ValidationScreen extends StatefulWidget {
 }
 
 class _ValidationScreenState extends State<ValidationScreen> {
+  /// Penolakan server yang berarti foto dan GPS harus diambil ulang.
+  static const _retakeReasons = {
+    'gps_out_of_radius',
+    'gps_accuracy_poor',
+    'timestamp_too_old',
+    'timestamp_future',
+    'photo_invalid',
+    'photo_required',
+    'photo_too_large',
+  };
+
   final _photoService = PhotoService();
   final _locationService = LocationService();
-  // final ImagePicker _imagePicker = ImagePicker();
 
   PhotoResult? _photo;
   GpsFix? _fix;
+  DateTime _capturedAt = DateTime.now().toUtc();
   bool _busy = false;
   bool _sending = false;
   String? _error;
@@ -45,7 +58,7 @@ class _ValidationScreenState extends State<ValidationScreen> {
   // Tujuan yang sedang dikerjakan saat layar ini dibuka.
   late final int _destIdx = FlowState.destIndex;
 
-  // ---------- Target & aturan ----------
+  // ---------- Target & aturan (hanya informasi; server menghitung ulang) ----------
 
   Destination? get _target {
     switch (widget.kind) {
@@ -55,7 +68,7 @@ class _ValidationScreenState extends State<ValidationScreen> {
             ? MockData.destinations[_destIdx]
             : null;
       case ValidationKind.warehouse:
-        return MockData.warehouse;
+        return FlowState.warehouse ?? MockData.warehouse;
       default:
         return null;
     }
@@ -84,6 +97,7 @@ class _ValidationScreenState extends State<ValidationScreen> {
   bool get _canSubmit =>
       _photo != null &&
       _fix != null &&
+      !_sending &&
       (_gpsValid || AppConfig.devBypassGeofence);
 
   String? get _invalidReason {
@@ -101,6 +115,7 @@ class _ValidationScreenState extends State<ValidationScreen> {
 
   // ---------- Teks per jenis ----------
 
+  /// Nilai validation_type yang dikenal server.
   String get _typeName => switch (widget.kind) {
     ValidationKind.ready => 'ready_to_ship',
     ValidationKind.loaded => 'loaded',
@@ -157,25 +172,25 @@ class _ValidationScreenState extends State<ValidationScreen> {
       _error = null;
       _locError = null;
     });
+
     try {
-      // 1. Pastikan GPS dan izin siap sebelum membuka kamera.
       await _locationService.ensureReady();
       if (!mounted) return;
-      // 2. Buka kamera asli (di dalam aplikasi).
+
       final path = await Navigator.of(context).push<String>(
         MaterialPageRoute(builder: (_) => CameraScreen(title: _title)),
       );
-      if (path == null || !mounted) return; // pengguna menutup kamera
+      if (path == null || !mounted) return;
 
-      // 3. Kompres foto.
       final photo = await _photoService.processFile(path);
-
-      // 4. GPS tepat setelah foto.
       final fix = await _locationService.getCurrent();
       if (!mounted) return;
+
       setState(() {
         _photo = photo;
         _fix = fix;
+        _capturedAt = DateTime.now()
+            .toUtc(); // jam perangkat saat bukti diambil
       });
     } on LocationException catch (e) {
       if (mounted) {
@@ -199,32 +214,111 @@ class _ValidationScreenState extends State<ValidationScreen> {
     _error = null;
     _locError = null;
   });
-  Future<void> _submit() async {
-    final fix = _fix!;
-    setState(() => _sending = true);
 
-    FlowState.records.add(
-      ValidationRecord(
+  Future<void> _submit() async {
+    final fix = _fix;
+    final photo = _photo;
+    if (fix == null || photo == null) return;
+
+    final shipmentId = FlowState.shipmentId;
+    if (shipmentId == null) {
+      setState(() {
+        _error = 'Pengiriman tidak ditemukan. Kembali ke Beranda lalu pilih pengiriman.';
+      });
+      return;
+    }
+
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+
+    try {
+      final result = await AppServices.I.shipments.submitValidation(
+        shipmentId: shipmentId,
         type: _typeName,
-        photoPath: _photo!.file.path,
         latitude: fix.latitude,
         longitude: fix.longitude,
         accuracy: fix.accuracy,
-        distance: _distance,
-        gpsValid: _gpsValid,
-        capturedAt: fix.timestamp,
-      ),
-    );
+        capturedAt: _capturedAt,
+        photoPath: photo.file.path,
+        nextStep: widget.kind == ValidationKind.departure
+            ? (FlowState.toWarehouse ? 'warehouse' : 'next_destination')
+            : null,
+      );
 
-    // Simulasi upload. Nanti diganti POST multipart ke Laravel.
-    await Future.delayed(const Duration(milliseconds: 900));
+      // Server adalah sumber kebenaran: tujuan, warehouse, dan status diselaraskan.
+      FlowState.sync(result.shipment);
+      FlowState.records.add(
+        ValidationRecord(
+          type: _typeName,
+          photoPath: photo.file.path,
+          latitude: fix.latitude,
+          longitude: fix.longitude,
+          accuracy: fix.accuracy,
+          distance: result.distance ?? _distance,
+          gpsValid: result.gpsValid,
+          capturedAt: _capturedAt,
+        ),
+      );
+
+      if (!mounted) return;
+      _goNext();
+    } on ApiException catch (e) {
+      await _handleRejection(e);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Terjadi kesalahan saat mengirim. Coba lagi.');
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _handleRejection(ApiException e) async {
     if (!mounted) return;
-    setState(() => _sending = false);
 
-    if (widget.kind == ValidationKind.unloaded) {
-      FlowState.destIndex = _destIdx + 1; // tujuan ini selesai
+    // Sesi habis ditangani global (kembali ke login).
+    if (e.isUnauthorized) return;
+
+    // Status berubah (dibatalkan admin, kirim ganda, dsb.): muat ulang dari Beranda.
+    if (e.statusCode == 409) {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Status pengiriman berubah'),
+          content: Text('${e.message}\n\nBeranda akan memuat status terbaru.'),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
     }
 
+    final firstField = e.fieldErrors.values.expand((v) => v).firstOrNull;
+    final message = firstField ?? e.message;
+
+    // Ditolak karena isi buktinya: foto dan GPS harus diambil ulang.
+    final mustRetake =
+        _retakeReasons.contains(e.reason) || e.fieldErrors.containsKey('photo');
+
+    setState(() {
+      _error = message;
+      if (mustRetake) {
+        _photo = null;
+        _fix = null;
+      }
+    });
+    // Galat jaringan dan server (tanpa alasan di atas): foto dan GPS dipertahankan untuk dicoba lagi.
+  }
+
+  void _goNext() {
     final Widget next = switch (widget.kind) {
       ValidationKind.ready => const LoadingScreen(),
       ValidationKind.loaded => const InTransitScreen(),
@@ -316,7 +410,7 @@ class _ValidationScreenState extends State<ValidationScreen> {
                     if (!_gpsValid && AppConfig.devBypassGeofence) ...[
                       const SizedBox(height: 6),
                       const Text(
-                        'MODE DEV: validasi dilewati agar bisa dites di emulator.',
+                        'MODE DEV: tombol tetap aktif. Server tetap menolak bila di luar radius.',
                         style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,

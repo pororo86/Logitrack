@@ -1,3 +1,5 @@
+import 'models/shipment_model.dart';
+
 class Destination {
   final String name;
   final String city;
@@ -189,6 +191,8 @@ class MockData {
 
 /// Status alur yang sedang berjalan (hanya untuk tahap UI).
 /// Nanti digantikan data dari backend Laravel (sumber kebenaran).
+/// Status alur yang sedang berjalan. Sumber kebenarannya adalah server;
+/// setiap jawaban server diselaraskan lewat sync().
 class FlowState {
   static int destIndex = 0;
   static bool toWarehouse = false;
@@ -196,9 +200,10 @@ class FlowState {
   static DateTime startedAt = DateTime.now();
   static final List<ValidationRecord> records = [];
 
-  /// Pengiriman di server yang sedang dijalankan (dipakai mulai F3).
   static int? shipmentId;
   static String? shipmentNumber;
+  static ShipmentModel? shipment;
+  static Destination? warehouse;
 
   static void reset() {
     destIndex = 0;
@@ -208,5 +213,48 @@ class FlowState {
     records.clear();
     shipmentId = null;
     shipmentNumber = null;
+    shipment = null;
+    warehouse = null;
+  }
+
+  /// Menyelaraskan alur lokal dengan data pengiriman dari server.
+  static void sync(ShipmentModel s) {
+    shipment = s;
+    shipmentId = s.id;
+    shipmentNumber = s.number;
+
+    if (s.destinations.isNotEmpty) {
+      MockData.destinations = s.destinations
+          .map(
+            (d) => Destination(
+              name: d.name,
+              city: d.city ?? '-',
+              address: d.address ?? d.city ?? '-',
+              lat: d.lat,
+              lng: d.lng,
+              radius: d.radius,
+              companyId: d.companyId,
+            ),
+          )
+          .toList();
+    }
+
+    final w = s.warehouse;
+    if (w != null) {
+      warehouse = Destination(
+        name: w.name,
+        city: w.city ?? '-',
+        address: w.address ?? w.city ?? '-',
+        lat: w.lat,
+        lng: w.lng,
+        radius: w.radius,
+      );
+    }
+
+    toWarehouse = s.status == 'warehouse';
+    destIndex = s.destinations
+        .where((d) => d.status == 'completed' || d.status == 'skipped')
+        .length;
+    skipped = s.destinations.where((d) => d.status == 'skipped').length;
   }
 }

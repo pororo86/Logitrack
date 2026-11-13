@@ -8,8 +8,29 @@ import '../../data/mock_data.dart';
 class CompletedScreen extends StatelessWidget {
   const CompletedScreen({super.key});
 
+  static String _duration(Duration d) {
+    final hours = d.inHours;
+    final minutes = d.inMinutes.remainder(60);
+    return hours > 0 ? '$hours jam $minutes menit' : '${d.inMinutes} menit';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final s = FlowState.shipment;
+    final start = s?.startTime;
+    final end = s?.completedAt;
+
+    final number =
+        s?.number ?? FlowState.shipmentNumber ?? MockData.shipmentNumber;
+    final points = s?.destinationCount ?? MockData.destinations.length;
+    final startText = s?.startWib == null ? '-' : formatDateTime(s!.startWib!);
+    final endText = s?.completedWib == null
+        ? '-'
+        : formatDateTime(s!.completedWib!);
+    final totalText = (start != null && end != null)
+        ? _duration(end.difference(start))
+        : '-';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -57,12 +78,14 @@ class CompletedScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                MockData.shipmentNumber,
-                                style: TextStyle(fontWeight: FontWeight.w700),
+                              Text(
+                                number,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                               Text(
-                                '${MockData.destinations.length} Titik Pengiriman',
+                                '$points Titik Pengiriman',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: AppColors.muted,
@@ -74,23 +97,11 @@ class CompletedScreen extends StatelessWidget {
                       ],
                     ),
                     const Divider(height: 24),
-                    _line(
-                      Icons.schedule,
-                      'Berangkat',
-                      formatDateTime(FlowState.startedAt),
-                    ),
+                    _line(Icons.schedule, 'Berangkat', startText),
                     const SizedBox(height: 10),
-                    _line(
-                      Icons.check_circle_outline,
-                      'Selesai',
-                      formatDateTime(DateTime.now()),
-                    ),
+                    _line(Icons.check_circle_outline, 'Selesai', endText),
                     const SizedBox(height: 10),
-                    _line(
-                      Icons.timer_outlined,
-                      'Total Waktu',
-                      '6 jam 48 menit',
-                    ),
+                    _line(Icons.timer_outlined, 'Total Waktu', totalText),
                     if (FlowState.skipped > 0) ...[
                       const SizedBox(height: 10),
                       _line(

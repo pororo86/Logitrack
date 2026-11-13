@@ -69,6 +69,20 @@ class Session extends ChangeNotifier {
     _set(SessionStatus.signedOut);
   }
 
+  /// Menyimpan profil ke server. Layar yang mendengarkan Session ikut diperbarui.
+  Future<void> updateProfile({
+    required String name,
+    String? phone,
+    String? companyName,
+  }) async {
+    _user = await _repository.updateProfile(
+      name: name,
+      phone: phone,
+      companyName: companyName,
+    );
+    notifyListeners();
+  }
+
   /// Dipanggil ApiClient saat server menjawab 401 di tengah pemakaian.
   void handleUnauthorized() {
     if (_status == SessionStatus.signedOut) return;

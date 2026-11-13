@@ -184,23 +184,8 @@ class _SetShipmentScreenState extends State<SetShipmentScreen> {
 
   /// Pengiriman dari server menjadi dasar alur layar berikutnya.
   void _enter(ShipmentModel s) {
-    MockData.destinations = s.destinations
-        .map(
-          (d) => Destination(
-            name: d.name,
-            city: d.city ?? '-',
-            address: d.address ?? d.city ?? '-',
-            lat: d.lat,
-            lng: d.lng,
-            radius: d.radius,
-            companyId: d.companyId,
-          ),
-        )
-        .toList();
-
     FlowState.reset();
-    FlowState.shipmentId = s.id;
-    FlowState.shipmentNumber = s.number;
+    FlowState.sync(s);
 
     if (!mounted) return;
     Navigator.of(context).push(
@@ -209,7 +194,6 @@ class _SetShipmentScreenState extends State<SetShipmentScreen> {
       ),
     );
   }
-
   // ---------------------------------------------------------------- UI
 
   @override

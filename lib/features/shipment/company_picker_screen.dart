@@ -9,7 +9,7 @@ import '../../core/widgets/app_widgets.dart';
 import '../../data/models/shipment_model.dart';
 
 /// Memilih satu atau beberapa perusahaan dari master Laravel.
-/// Mengembalikan List<CompanyModel> lewat Navigator.pop.
+/// Mengembalikan List CompanyModel lewat Navigator.pop.
 class CompanyPickerScreen extends StatefulWidget {
   const CompanyPickerScreen({super.key, this.excludeIds = const {}});
 

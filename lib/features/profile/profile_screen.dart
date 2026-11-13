@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/mock_data.dart';
 import '../../core/auth/app_services.dart';
+import '../../core/network/api_exception.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -28,84 +29,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _company = user?.driver?.companyName ?? MockData.driverCompany;
   }
 
-  Future<void> _editProfile() async {
-    final nameController = TextEditingController(text: _name);
-    final emailController = TextEditingController(text: _email);
-    final phoneController = TextEditingController(text: _phone);
+  String _vehicleText() {
+    final v = AppServices.I.session.user?.driver?.vehicle;
+    if (v == null) return 'Belum ada kendaraan dipilih';
+    return '${v.plateNumber} • ${v.name}';
+  }
 
-    final result = await showDialog<bool>(
+  Future<void> _editProfile() async {
+    final saved = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Edit Profil'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Lengkap',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Nomor Telepon',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (nameController.text.trim().isEmpty ||
-                    emailController.text.trim().isEmpty ||
-                    phoneController.text.trim().isEmpty) {
-                  return;
-                }
-                Navigator.pop(dialogContext, true);
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
-        );
-      },
+      barrierDismissible: false,
+      builder: (_) => _EditProfileDialog(
+        name: _name,
+        email: _email,
+        phone: _phone,
+        company: _company,
+      ),
     );
 
-    if (result == true && mounted) {
-      setState(() {
-        _name = nameController.text.trim();
-        _email = emailController.text.trim();
-        _phone = phoneController.text.trim();
-      });
+    if (saved != true || !mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profil berhasil diperbarui')),
-      );
-    }
+    final user = AppServices.I.session.user;
+    setState(() {
+      _name = user?.name ?? _name;
+      _phone = user?.phone ?? '';
+      _company = user?.driver?.companyName ?? '';
+    });
 
-    nameController.dispose();
-    emailController.dispose();
-    phoneController.dispose();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Profil berhasil diperbarui')));
   }
 
   void _soon(String name) {
@@ -209,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 _InfoRow('Email', _email),
-                _InfoRow('Nomor telepon', _phone),
+                _InfoRow('Nomor telepon', _phone.isEmpty ? '-' : _phone),
                 _InfoRow('Perusahaan', _company),
               ],
             ),
@@ -235,18 +188,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Kendaraan Aktif',
                         style: TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      SizedBox(height: 3),
+                      const SizedBox(height: 3),
                       Text(
-                        'Belum ada kendaraan dipilih',
-                        style: TextStyle(fontSize: 12, color: AppColors.muted),
+                        _vehicleText(),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
                       ),
                     ],
                   ),
@@ -362,6 +318,149 @@ class _InfoRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Dialog edit profil. Memegang controller sendiri supaya aman dibuang
+/// setelah animasi tutup selesai. Email hanya dapat diubah admin.
+class _EditProfileDialog extends StatefulWidget {
+  const _EditProfileDialog({
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.company,
+  });
+
+  final String name;
+  final String email;
+  final String phone;
+  final String company;
+
+  @override
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
+}
+
+class _EditProfileDialogState extends State<_EditProfileDialog> {
+  late final TextEditingController _name = TextEditingController(
+    text: widget.name,
+  );
+  late final TextEditingController _phone = TextEditingController(
+    text: widget.phone,
+  );
+  late final TextEditingController _company = TextEditingController(
+    text: widget.company,
+  );
+
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    _company.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final name = _name.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Nama lengkap wajib diisi.');
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    try {
+      await AppServices.I.session.updateProfile(
+        name: name,
+        phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+        companyName: _company.text.trim().isEmpty ? null : _company.text.trim(),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      final first = e.fieldErrors.values.expand((v) => v).firstOrNull;
+      setState(() {
+        _saving = false;
+        _error = first ?? e.message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit Profil'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _name,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Nama Lengkap',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Nomor Telepon',
+                prefixIcon: Icon(Icons.phone_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _company,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Perusahaan',
+                prefixIcon: Icon(Icons.apartment),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: TextEditingController(text: widget.email),
+              enabled: false,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                helperText: 'Email hanya dapat diubah oleh admin',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(
+                    color: AppColors.danger,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+        ),
+      ],
     );
   }
 }

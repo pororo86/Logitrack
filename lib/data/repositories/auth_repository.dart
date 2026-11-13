@@ -41,6 +41,18 @@ class AuthRepository {
 
   Future<UserModel> me() async => UserModel.fromJson(await _api.get('/me'));
 
+  Future<UserModel> updateProfile({
+    required String name,
+    String? phone,
+    String? companyName,
+  }) async {
+    final data = await _api.put(
+      '/me',
+      data: {'name': name, 'phone': phone, 'company_name': companyName},
+    );
+    return UserModel.fromJson(data);
+  }
+
   /// Token lokal selalu dihapus, walau server tidak terjangkau.
   Future<void> logout() async {
     try {

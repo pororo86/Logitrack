@@ -1,14 +1,65 @@
 import 'package:flutter/material.dart';
 
+import '../../core/auth/app_services.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/format.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/mock_data.dart';
 import '../validation/validation_screen.dart';
 
-class InTransitScreen extends StatelessWidget {
+class InTransitScreen extends StatefulWidget {
   const InTransitScreen({super.key});
 
-  void _showDetail(BuildContext context, Destination d) {
+  @override
+  State<InTransitScreen> createState() => _InTransitScreenState();
+}
+
+class _InTransitScreenState extends State<InTransitScreen> {
+  bool _starting = false;
+  String? _error;
+
+  /// Dari status "loaded", perjalanan harus dimulai dulu di server.
+  bool get _needsStart => FlowState.shipment?.status == 'loaded';
+
+  @override
+  void initState() {
+    super.initState();
+    if (_needsStart) _start();
+  }
+
+  Future<void> _start() async {
+    final id = FlowState.shipmentId;
+    if (id == null) return;
+
+    setState(() {
+      _starting = true;
+      _error = null;
+    });
+
+    try {
+      final shipment = await AppServices.I.shipments.start(id);
+      FlowState.sync(shipment);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  void _arrive() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ValidationScreen(
+          kind: FlowState.toWarehouse
+              ? ValidationKind.warehouse
+              : ValidationKind.arrived,
+        ),
+      ),
+    );
+  }
+
+  void _showDetail(Destination d) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -38,14 +89,20 @@ class InTransitScreen extends StatelessWidget {
     );
   }
 
+  String get _etaText {
+    final eta = FlowState.shipment?.etaWib;
+    return eta == null ? 'Belum diatur' : formatTime(eta);
+  }
+
   @override
   Widget build(BuildContext context) {
     final dest = FlowState.toWarehouse
-        ? MockData.warehouse
+        ? (FlowState.warehouse ?? MockData.warehouse)
         : MockData.destinations[FlowState.destIndex.clamp(
             0,
             MockData.destinations.length - 1,
           )];
+    final canArrive = !_starting && !_needsStart;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Dalam Perjalanan')),
@@ -58,6 +115,23 @@ class InTransitScreen extends StatelessWidget {
                 children: [
                   const StepIndicator(active: 3),
                   const SizedBox(height: 16),
+                  if (_starting) ...[
+                    _banner(
+                      'Memulai perjalanan...',
+                      const Color(0xFFE8F0FE),
+                      AppColors.primary,
+                      spinner: true,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_error != null) ...[
+                    _banner(_error!, const Color(0xFFFDECEC), AppColors.danger),
+                    TextButton(
+                      onPressed: _start,
+                      child: const Text('Coba lagi'),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                   AppCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,7 +172,7 @@ class InTransitScreen extends StatelessWidget {
                               ),
                             ),
                             FilledButton.tonal(
-                              onPressed: () => _showDetail(context, dest),
+                              onPressed: () => _showDetail(dest),
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppColors.softBlue,
                                 foregroundColor: AppColors.primary,
@@ -133,10 +207,10 @@ class InTransitScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: const Column(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 'Estimasi tiba',
                                 style: TextStyle(
                                   fontSize: 11,
@@ -144,8 +218,8 @@ class InTransitScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '1 jam 20 menit',
-                                style: TextStyle(
+                                _etaText,
+                                style: const TextStyle(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 15,
                                 ),
@@ -197,19 +271,50 @@ class InTransitScreen extends StatelessWidget {
                 label: FlowState.toWarehouse
                     ? 'Tiba di Warehouse'
                     : 'Tiba di Lokasi',
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ValidationScreen(
-                      kind: FlowState.toWarehouse
-                          ? ValidationKind.warehouse
-                          : ValidationKind.arrived,
-                    ),
-                  ),
-                ),
+                onPressed: canArrive ? _arrive : null,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _banner(
+    String text,
+    Color background,
+    Color foreground, {
+    bool spinner = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          if (spinner)
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Icon(Icons.error_outline, color: foreground, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: foreground,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

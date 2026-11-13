@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/auth/app_services.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_widgets.dart';
@@ -77,8 +79,30 @@ class NextDestinationScreen extends StatelessWidget {
       ),
     );
     if (ok != true || !context.mounted) return;
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const CompletedScreen()));
+
+    final id = FlowState.shipmentId;
+    if (id == null) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final shipment = await AppServices.I.shipments.complete(id);
+      FlowState.sync(shipment);
+
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // tutup indikator
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const CompletedScreen()));
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // tutup indikator
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   @override

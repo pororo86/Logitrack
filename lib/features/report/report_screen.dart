@@ -2,253 +2,365 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/auth/app_services.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
-import '../../data/mock_data.dart';
+import '../../data/models/report_model.dart';
 
-/// Laporan Pengiriman (statistik 1 bulan). Grafik digambar manual,
-/// tanpa package tambahan. Angka masih dummy -> ganti dari Laravel.
-class ReportScreen extends StatelessWidget {
+const _bulanPendek = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
+
+/// Laporan Pengiriman (30 hari terakhir) dari server.
+/// Grafik digambar manual, tanpa package tambahan.
+class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
 
-  static const _success = 128;
-  static const _failed = 6;
-  static const _total = _success + _failed;
+  @override
+  State<ReportScreen> createState() => _ReportScreenState();
+}
+
+class _ReportScreenState extends State<ReportScreen> {
+  ReportSummary? _data;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final data = await AppServices.I.shipments.summary(days: 30);
+      if (!mounted) return;
+      setState(() => _data = data);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final pct = (_success / _total * 100).round();
-
     return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-        children: [
-          const Text(
-            'Laporan Pengiriman',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text,
+      child: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          children: [
+            const Text(
+              'Laporan Pengiriman',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'Statistik pengiriman dalam periode satu bulan',
+              style: TextStyle(fontSize: 12, color: AppColors.muted),
+            ),
+            const SizedBox(height: 14),
+            if (_data == null && _loading)
+              const Padding(
+                padding: EdgeInsets.only(top: 60),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_data == null)
+              _errorBlock()
+            else
+              ..._content(_data!),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _errorBlock() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFDECEC),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            _error ?? 'Data laporan tidak tersedia.',
+            style: const TextStyle(
+              color: AppColors.danger,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 2),
-          const Text(
-            'Statistik pengiriman dalam periode satu bulan',
-            style: TextStyle(fontSize: 12, color: AppColors.muted),
+        ),
+        TextButton(onPressed: _load, child: const Text('Coba lagi')),
+      ],
+    );
+  }
+
+  String _dayLabel(String iso, {required bool withMonth}) {
+    final d = DateTime.tryParse(iso);
+    if (d == null) return iso;
+    return withMonth ? '${d.day} ${_bulanPendek[d.month - 1]}' : '${d.day}';
+  }
+
+  List<Widget> _axis(List<DailyCount> daily) {
+    if (daily.length < 2) return const [];
+    final last = daily.length - 1;
+    final idx = <int>[0, last ~/ 4, last ~/ 2, (last * 3) ~/ 4, last];
+
+    return [
+      for (var i = 0; i < idx.length; i++)
+        _Axis(_dayLabel(daily[idx[i]].date, withMonth: i == idx.length - 1)),
+    ];
+  }
+
+  List<Widget> _content(ReportSummary r) {
+    final ratio = r.total > 0 ? r.success / r.total : 0.0;
+    final stats = r.daily.length >= 2
+        ? r.daily.map((d) => d.count.toDouble()).toList()
+        : <double>[0, 0];
+
+    return [
+      AppCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: const Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Periode',
+                    style: TextStyle(fontSize: 10, color: AppColors.muted),
+                  ),
+                  Text(
+                    '1 Bulan Terakhir',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.calendar_month_outlined, color: AppColors.primary),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          Expanded(
+            child: _MiniStat(
+              Icons.inventory_2_outlined,
+              AppColors.primary,
+              AppColors.softBlue,
+              '${r.total}',
+              'Total',
+            ),
           ),
-          const SizedBox(height: 14),
-          AppCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: const Row(
+          const SizedBox(width: 10),
+          Expanded(
+            child: _MiniStat(
+              Icons.check,
+              AppColors.success,
+              AppColors.softGreen,
+              '${r.success}',
+              'Berhasil',
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _MiniStat(
+              Icons.close,
+              AppColors.danger,
+              AppColors.softRed,
+              '${r.failed}',
+              'Gagal',
+            ),
+          ),
+        ],
+      ),
+      if (r.inProgress > 0)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            '${r.inProgress} pengiriman masih berjalan (belum dihitung)',
+            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+          ),
+        ),
+      const SizedBox(height: 14),
+      AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Statistik Pengiriman (Per Hari)',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+            const Text(
+              'Jumlah pengiriman selama 1 bulan',
+              style: TextStyle(fontSize: 10.5, color: AppColors.muted),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 140,
+              width: double.infinity,
+              child: CustomPaint(painter: _LineChartPainter(stats)),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: _axis(r.daily),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Distribusi Status (1 Bulan)',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Row(
               children: [
+                SizedBox(
+                  width: 84,
+                  height: 84,
+                  child: CustomPaint(
+                    painter: _DonutPainter(ratio),
+                    child: Center(
+                      child: Text(
+                        '${r.successRate}%',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 22),
                 Expanded(
-                  child: Column(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Periode',
-                        style: TextStyle(fontSize: 10, color: AppColors.muted),
+                      Expanded(
+                        child: _Legend(
+                          'Berhasil',
+                          '${r.success} pengiriman',
+                          'Berhasil',
+                        ),
                       ),
-                      Text(
-                        '1 Bulan Terakhir',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: _Legend(
+                          'Gagal',
+                          '${r.failed} pengiriman',
+                          'Gagal',
                         ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.calendar_month_outlined, color: AppColors.primary),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          const Row(
-            children: [
-              Expanded(
-                child: _MiniStat(
-                  Icons.inventory_2_outlined,
-                  AppColors.primary,
-                  AppColors.softBlue,
-                  '$_total',
-                  'Total',
-                ),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: _MiniStat(
-                  Icons.check,
-                  AppColors.success,
-                  AppColors.softGreen,
-                  '$_success',
-                  'Berhasil',
-                ),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: _MiniStat(
-                  Icons.close,
-                  AppColors.danger,
-                  AppColors.softRed,
-                  '$_failed',
-                  'Gagal',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          AppCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Riwayat Kendaraan Dipakai',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            if (r.vehicles.isEmpty)
+              const Text(
+                'Belum ada data.',
+                style: TextStyle(fontSize: 12, color: AppColors.muted),
+              )
+            else
+              for (var i = 0; i < r.vehicles.length; i++) ...[
+                if (i > 0) const Divider(height: 14),
+                _VehicleRow(r.vehicles[i].plateNumber, r.vehicles[i].count),
+              ],
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Gagal Pengiriman',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Row(
               children: [
-                const Text(
-                  'Statistik Pengiriman (Per Hari)',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                ),
-                const Text(
-                  'Jumlah pengiriman selama 1 bulan',
-                  style: TextStyle(fontSize: 10.5, color: AppColors.muted),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 140,
-                  width: double.infinity,
-                  child: CustomPaint(
-                    painter: _LineChartPainter(MockData.dailyStats),
+                Text(
+                  '${r.failed}',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.danger,
                   ),
                 ),
-                const SizedBox(height: 6),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _Axis('1'),
-                    _Axis('8'),
-                    _Axis('15'),
-                    _Axis('22'),
-                    _Axis('30 Sep'),
-                  ],
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Text(
+                    r.failureReasons.isEmpty
+                        ? 'Tidak ada pengiriman gagal'
+                        : r.failureReasons
+                              .map((f) => '${f.label} ${f.count}')
+                              .join('  •  '),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.muted,
+                      height: 1.5,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 14),
-          AppCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Distribusi Status (1 Bulan)',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 84,
-                      height: 84,
-                      child: CustomPaint(
-                        painter: _DonutPainter(_success / _total),
-                        child: Center(
-                          child: Text(
-                            '$pct%',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 22),
-                    const Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _Legend(
-                              'Berhasil',
-                              '$_success pengiriman',
-                              'Berhasil',
-                            ),
-                          ),
-                          Expanded(
-                            child: _Legend(
-                              'Gagal',
-                              '$_failed pengiriman',
-                              'Gagal',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          const AppCard(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Riwayat Kendaraan Dipakai',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                ),
-                SizedBox(height: 8),
-                _VehicleRow('B 9123 UXR', 12),
-                Divider(height: 14),
-                _VehicleRow('B 8765 KLP', 8),
-                Divider(height: 14),
-                _VehicleRow('B 1234 QWE', 6),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          const AppCard(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Gagal Pengiriman',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                ),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      '$_failed',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.danger,
-                      ),
-                    ),
-                    SizedBox(width: 18),
-                    Expanded(
-                      child: Text(
-                        'Alamat tidak valid 3  •  Penerima tidak ada 2\n'
-                        'Kendala operasional 1',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: AppColors.muted,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
+    ];
   }
 }
 
@@ -293,10 +405,8 @@ class _Axis extends StatelessWidget {
   const _Axis(this.text);
 
   @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: const TextStyle(fontSize: 9.5, color: AppColors.muted),
-  );
+  Widget build(BuildContext context) =>
+      Text(text, style: const TextStyle(fontSize: 9.5, color: AppColors.muted));
 }
 
 class _Legend extends StatelessWidget {
@@ -366,7 +476,8 @@ class _LineChartPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
 
-    final maxV = data.reduce(math.max) * 1.1;
+    final maxV = math.max(1.0, data.reduce(math.max)) * 1.1;
+    // final maxV = data.reduce(math.max) * 1.1;
     final dx = size.width / (data.length - 1);
     final pts = [
       for (int i = 0; i < data.length; i++)

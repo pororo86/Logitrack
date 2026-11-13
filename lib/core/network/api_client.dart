@@ -73,7 +73,8 @@ class ApiClient {
     String path, {
     Object? data,
     bool auth = true,
-  }) => _send('POST', path, data: data, auth: auth);
+    Duration? timeout,
+  }) => _send('POST', path, data: data, auth: auth, timeout: timeout);
 
   Future<Map<String, dynamic>> put(
     String path, {
@@ -88,13 +89,19 @@ class ApiClient {
     Object? data,
     Map<String, dynamic>? query,
     required bool auth,
+    Duration? timeout,
   }) async {
     try {
       final response = await dio.request<dynamic>(
         path,
         data: data,
         queryParameters: query,
-        options: Options(method: method, extra: {'auth': auth}),
+        options: Options(
+          method: method,
+          extra: {'auth': auth},
+          sendTimeout: timeout,
+          receiveTimeout: timeout,
+        ),
       );
 
       final body = response.data;
